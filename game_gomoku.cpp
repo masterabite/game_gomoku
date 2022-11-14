@@ -9,7 +9,7 @@ struct board {
 
     static const int n = 25;            //размер доски
     static const int cnt = 5;           //кол-во элементов для победы
-    static const char null_char = '*';  //нулевой символ доски
+    static const char null_char = '.';  //нулевой символ доски
     char data[n][n];                    //представление доски матрицей символ
 
     //конструктор по умолчанию
@@ -62,12 +62,23 @@ struct board {
     }
 
     void print() {
-        cout << "Игровое поле:\n";
+        cout << "Игровое поле:\n\t";
+        for (int j = 0; j < n; ++j) {
+            printf("%c ", 'A' + j);
+        }
+
         for (int i = 0; i < n; ++i) {
+            printf("\n%2d\t", i+1);
             for (int j = 0; j < n; ++j) {
                 cout << data[i][j] << ' ';
-            }cout << '\n';
-        }cout << '\n';
+            }
+            printf("\t%2d", i + 1);
+        }cout << "\n\t";
+
+        for (int j = 0; j < n; ++j) {
+            printf("%c ", 'A' + j);
+        }
+        printf("\n\n");
     }
 };
 
@@ -87,10 +98,13 @@ struct player {
         //ход для человека
         if (is_human) {
             int i, j;
+            char ch;
             while (true) {
-                cout << "Введите строки и столбца и строку: ";
-                cin >> i >> j;
-                --i; --j;
+                cout << "Введите строки и столбца и строку (число и буква): ";
+                cin >> i >> ch;
+                --i;
+                j = ch - 'A';
+               
                 if (i < 0 || j < 0 || i >= m_board->n || j >= m_board->n) {
                     cout << "Ошибка: выход за пределы доски.\n";
                     continue;
@@ -124,36 +138,59 @@ struct player {
                         continue;
                     }
 
+                    int max_my_streak = 0;
+                    int max_other_streak = 0;
+
                     //grade[i][j] оценка для клетки, чем она выше, тем больше шансов, что туда будет поставлена клетка
 
-                    for (int dir = 0; dir < 6; ++dir) {
+                    for (int dir = 0; dir < 3; ++dir) {
                         //определяем приращение по i и j по направлению
-                        int dx = int((dir%3) % 2 == 0) * (-1 * (dir / 3));
-                        int dy = int((dir%3) > 0) * (-1 * (dir / 3));
-                        int temp_grade = 1;
+                        int dx = dir % 2 == 0;
+                        int dy = dir > 0;
 
-                        for (int k = 0; k < b.cnt; ++k) {
-                            if (!b.in_board(i + dx * k, j + dy * k)) { break; }
-                            temp_grade++;
+                        int my_streak = 0;
+                        int other_streak = 0;
+
+                        for (int k = -b.cnt+1; k < b.cnt; ++k) {
+                            if (!b.in_board(i + dx * k, j + dy * k)) { continue; }
+                            
                             char cur_ch = b.data[i + dx * k][j + dy * k];
-                            if (cur_ch == m_char) {
-                                temp_grade *= 2;
+
+                            if (cur_ch == m_char || cur_ch == b.null_char) {
+                                my_streak += (cur_ch == m_char? 2 : 1);
                             }
-                            if (cur_ch != m_char && cur_ch != b.null_char) {
-                                temp_grade *= 4;
+                            else {
+                                max_my_streak = max(max_my_streak, my_streak);
+                                my_streak = 0;
+                            }
+
+                            if (cur_ch != m_char) {
+                                other_streak += (cur_ch != b.null_char ? 2 : 1);
+                            }
+                            else {
+                                max_other_streak = max(max_other_streak, other_streak);
+                                other_streak = 0;
                             }
                         }
-                        grades[i][j] += temp_grade;
-                    }
 
+                        max_my_streak = max(max_my_streak, my_streak);
+                        max_other_streak = max(max_other_streak, other_streak);
+
+                        if (max_my_streak < b.cnt && max_other_streak < b.cnt) {
+                            grades[i][j] = 0;
+                        }
+                        else {
+                            grades[i][j] = max(max_other_streak, max(grades[i][j], max_my_streak));
+                        }
+                    }
+     
                     if (grades[i][j] > max_grade) {
                         max_grade = grades[i][j];
                     }
                 }
             }
 
-
-            int rnd = rand() % 10;
+            int rnd = rand() % (b.n*b.n);
             bool v = false;
             for (int i = 0; !v; i = (i+1)%b.n) {
                 for (int j = 0; j < b.n; ++j) {
@@ -162,12 +199,13 @@ struct player {
                             max_i = i;
                             max_j = j;
                             v = true;
+                            break;
                         }
                     }
                 }
             }
 
-            printf("Игрок выбирает клетку [%d][%d].\n", max_i+1, max_j+1);
+            printf("Игрок выбирает клетку [%d][%c].\n", max_i+1, 'A' + max_j);
             b.data[max_i][max_j] = m_char;
         }
     }
